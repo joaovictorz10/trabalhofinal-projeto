@@ -1,0 +1,29 @@
+@startuml MecanicaPro_EST_Agendamento
+title Diagrama de Estados — Agendamento
+
+note "Guards condicionais - Agendamento:\n\nTransições principais:\n• [cliente solicita] → PENDENTE\n• [recepcionista confirma disponibilidade] → CONFIRMADO\n• [data/hora chegou] → EM_ATENDIMENTO\n• [serviço finalizado] → CONCLUIDO\n• [cancelamento antes do horário] → CANCELADO" as N1
+
+[*] --> Pendente : cliente solicita agendamento\n/ registrar dataSolicitacao
+
+Pendente : dataSolicitacao = now()\nstatus = "PENDENTE"\ndataHora definida
+
+Pendente --> Confirmado : recepcionista confirma\n/ notificar cliente
+Pendente --> Cancelado : recepcionista recusa disponibilidade\n/ notificar cliente
+
+Confirmado : status = "CONFIRMADO"\n/ lembrete enviado 24h antes
+
+Confirmado --> EmAtendimento : data/hora do agendamento chegou\n/ abrir OS vinculada
+Confirmado --> Cancelado : cliente cancela\n/ registrar canceladoPor
+
+EmAtendimento : status = "EM_ATENDIMENTO"\nosId vinculada
+
+EmAtendimento --> Concluido : OS vinculada finalizada\n/ registrar conclusão
+
+Concluido : status = "CONCLUIDO"\ndataConclusao = now()
+
+Cancelado : status = "CANCELADO"\ndataCancelamento = now()\ncanceladoPor = "cliente/recepcionista"
+
+Concluido --> [*]
+Cancelado --> [*]
+
+@enduml

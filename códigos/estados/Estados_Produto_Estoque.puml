@@ -1,0 +1,28 @@
+@startuml MecanicaPro_EST_Produto
+title Diagrama de Estados — Produto (Estoque)
+
+note "Guards condicionais - Produto:\n\nTransições principais:\n• [admin cadastra] → ATIVO\n• [quantidade <= estoque_minimo] → ESTOQUE_BAIXO\n• [quantidade = 0] → SEM_ESTOQUE\n• [reposição realizada] → ATIVO\n• [admin desativa] → INATIVO" as N1
+
+[*] --> Ativo : admin cadastra produto\n/ definir quantidade inicial
+
+Ativo : status = "ATIVO"\nquantidade > estoqueMinimo
+
+Ativo --> EstoqueBaixo : [quantidade <= estoqueMinimo]\n/ notificar gestor
+Ativo --> Inativo : admin desativa produto
+
+EstoqueBaixo : status = "ESTOQUE_BAIXO"\n/ alerta enviado ao gestor
+
+EstoqueBaixo --> SemEstoque : [quantidade = 0]\n/ bloquear uso em OS
+EstoqueBaixo --> Ativo : reposição realizada\n/ quantidade > estoqueMinimo
+
+SemEstoque : status = "SEM_ESTOQUE"\nproduto bloqueado para uso
+
+SemEstoque --> EstoqueBaixo : reposição parcial\n/ quantidade <= estoqueMinimo
+SemEstoque --> Ativo : reposição completa\n/ quantidade > estoqueMinimo
+
+Inativo : status = "INATIVO"\nproduto não disponível para uso
+
+Inativo --> Ativo : admin reativa produto
+Inativo --> [*] : admin remove produto definitivamente
+
+@enduml

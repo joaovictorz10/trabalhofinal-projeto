@@ -1,0 +1,48 @@
+@startuml MecanicaPro_EST_OrdemDeServico
+title Diagrama de Estados — Ordem de Serviço
+
+skinparam state {
+  BackgroundColor LightBlue
+  BorderColor DarkBlue
+  ArrowColor DarkBlue
+}
+
+note "Guards condicionais - Ordem de Serviço:\n\nTransições principais:\n• [recepcionista cria OS] → ABERTA\n• [mecânico inicia atendimento] → EM_EXECUCAO\n• [peça não disponível em estoque] → AGUARDANDO_PECA\n• [mecânico finaliza serviço] → CONCLUIDA\n• [pagamento registrado] → PAGA\n• [cliente ou recepcionista cancela] → CANCELADA\n\nEstados finais:\n• PAGA → processo encerrado\n• CANCELADA → processo encerrado" as N1
+
+[*] --> Aberta : recepcionista cria OS\n/ registrar dataAbertura
+
+Aberta : dataAbertura = now()\nstatus = "ABERTA"\nvalor_estimado definido
+
+Aberta --> EmExecucao : mecânico inicia atendimento\n/ atribuir mecânico; registrar dataInicio
+Aberta --> Cancelada : recepcionista cancela\n/ registrar motivoCancelamento
+Aberta --> Agendada : OS vinculada a agendamento
+
+state Agendada {
+  Agendada : dataPrevista definida\nstatus = "AGENDADA"
+}
+
+Agendada --> EmExecucao : data do agendamento chegou\n/ mecânico inicia
+
+EmExecucao : mecanico_id = atribuído\ndataInicio = now()\nstatus = "EM_EXECUCAO"
+
+EmExecucao --> AguardandoPeca : peça não disponível em estoque\n/ notificar gestor
+EmExecucao --> Concluida : mecânico finaliza serviço\n/ calcular valorTotal; registrar dataFechamento
+EmExecucao --> Cancelada : problema incontornável\n/ registrar motivo
+
+AguardandoPeca : status = "AGUARDANDO_PECA"\nmotivo = "peça indisponível"
+
+AguardandoPeca --> EmExecucao : peça reposta no estoque\n/ retomar execução
+
+Concluida : status = "CONCLUIDA"\nvalorTotal calculado\ndataFechamento = now()\n/ cliente notificado
+
+Concluida --> Paga : pagamento registrado\n/ emitir comprovante
+Concluida --> Cancelada : cliente recusa serviço\n/ registrar motivo
+
+Paga : status = "PAGA"\ndataPagamento = now()\ncomprovante emitido
+
+Cancelada : status = "CANCELADA"\ndataCancelamento = now()
+
+Paga --> [*] : processo encerrado
+Cancelada --> [*] : processo encerrado
+
+@enduml

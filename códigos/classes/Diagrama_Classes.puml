@@ -1,0 +1,207 @@
+@startuml MecanicaPro_Classes
+title Sistema MecânicaPro — Diagrama de Classes
+
+skinparam classAttributeIconSize 0
+
+interface Autenticavel {
+  +autenticar(email: String, senha: String): Boolean
+  +encerrarSessao(): void
+}
+
+abstract class Usuario {
+  -id: Long
+  -nome: String
+  -email: String
+  -senhaHash: String
+  -telefone: String
+  -dataCadastro: Date
+  -status: String
+  +atualizarPerfil(dados: Map): Boolean
+  +alterarSenha(senhaAtual: String, novaSenha: String): Boolean
+  +getPermissoes(): List<String>
+}
+
+Usuario ..|> Autenticavel
+
+class Recepcionista {
+  -turno: String
+  +cadastrarCliente(dados: Map): Cliente
+  +abrirOrdemDeServico(dados: Map): OrdemDeServico
+  +realizarAgendamento(dados: Map): Agendamento
+  +registrarPagamento(osId: Long, forma: String, valor: Double): Pagamento
+}
+
+class Mecanico {
+  -especialidade: String
+  -creaNumero: String
+  +executarServico(osId: Long): void
+  +atualizarStatusOS(osId: Long, status: StatusOS): void
+  +consultarEstoque(produtoId: Long): Integer
+  +registrarPecaUsada(osId: Long, produtoId: Long, qtd: Integer): void
+}
+
+class Administrador {
+  -nivelAcesso: String
+  +gerenciarProdutos(acao: String, dados: Map): Boolean
+  +gerenciarServicos(acao: String, dados: Map): Boolean
+  +gerenciarUsuarios(acao: String, dados: Map): Boolean
+  +gerarRelatorio(tipo: String, params: Map): Relatorio
+}
+
+Usuario <|-- Recepcionista
+Usuario <|-- Mecanico
+Usuario <|-- Administrador
+
+class Cliente {
+  -id: Long
+  -nome: String
+  -cpf: String
+  -email: String
+  -telefone: String
+  -endereco: String
+  -dataCadastro: Date
+  +getVeiculos(): List<Veiculo>
+  +getHistoricoOS(): List<OrdemDeServico>
+}
+
+class Veiculo {
+  -id: Long
+  -placa: String
+  -marca: String
+  -modelo: String
+  -ano: Integer
+  -cor: String
+  -quilometragem: Integer
+  -clienteId: Long
+  +atualizarQuilometragem(km: Integer): void
+}
+
+class OrdemDeServico {
+  -id: Long
+  -clienteId: Long
+  -veiculoId: Long
+  -mecanicoId: Long
+  -dataAbertura: DateTime
+  -dataFechamento: DateTime
+  -status: StatusOS
+  -observacoes: String
+  -valorTotal: Double
+  +calcularTotal(): Double
+  +adicionarItem(item: ItemOS): void
+  +fecharOS(): void
+  +getItens(): List<ItemOS>
+}
+
+class ItemOS {
+  -id: Long
+  -osId: Long
+  -tipo: String
+  -descricao: String
+  -quantidade: Integer
+  -valorUnitario: Double
+  +getSubtotal(): Double
+}
+
+class Agendamento {
+  -id: Long
+  -clienteId: Long
+  -veiculoId: Long
+  -dataHora: DateTime
+  -servicoId: Long
+  -status: StatusAgendamento
+  -observacoes: String
+  +confirmar(): void
+  +cancelar(): void
+  +remarcar(novaData: DateTime): void
+}
+
+class Produto {
+  -id: Long
+  -nome: String
+  -descricao: String
+  -codigoBarras: String
+  -categoria: String
+  -quantidadeEstoque: Integer
+  -estoqueMinimo: Integer
+  -valorCusto: Double
+  -valorVenda: Double
+  +verificarDisponibilidade(qtd: Integer): Boolean
+  +baixarEstoque(qtd: Integer): void
+  +reporEstoque(qtd: Integer): void
+}
+
+class Servico {
+  -id: Long
+  -nome: String
+  -descricao: String
+  -categoria: String
+  -duracaoEstimadaMin: Integer
+  -valorBase: Double
+  -ativo: Boolean
+  +calcularValor(veiculo: Veiculo): Double
+}
+
+class Pagamento {
+  -id: Long
+  -osId: Long
+  -valor: Double
+  -formaPagamento: String
+  -dataPagamento: DateTime
+  -status: String
+  -comprovante: String
+  +gerarComprovante(): String
+}
+
+class Notificacao {
+  -id: Long
+  -clienteId: Long
+  -titulo: String
+  -mensagem: String
+  -tipo: TipoNotificacao
+  -dataEnvio: DateTime
+  -lida: Boolean
+  +marcarComoLida(): void
+}
+
+enum StatusOS {
+  ABERTA
+  EM_EXECUCAO
+  AGUARDANDO_PECA
+  CONCLUIDA
+  PAGA
+  CANCELADA
+}
+
+enum StatusAgendamento {
+  PENDENTE
+  CONFIRMADO
+  EM_ATENDIMENTO
+  CONCLUIDO
+  CANCELADO
+}
+
+enum TipoNotificacao {
+  ABERTURA_OS
+  CONCLUSAO_SERVICO
+  LEMBRETE_AGENDAMENTO
+  PAGAMENTO_CONFIRMADO
+  ESTOQUE_BAIXO
+}
+
+Cliente "1" --> "0..*" Veiculo : possui
+Cliente "1" --> "0..*" OrdemDeServico : solicita
+Cliente "1" --> "0..*" Agendamento : realiza
+Veiculo "1" --> "0..*" OrdemDeServico : gerada para
+OrdemDeServico "1" --> "1..*" ItemOS : contem
+OrdemDeServico "1" --> "1" Pagamento : gera
+OrdemDeServico "0..*" --> "1" Mecanico : executada por
+Recepcionista "1" --> "0..*" OrdemDeServico : abre
+Recepcionista "1" --> "0..*" Agendamento : gerencia
+Produto "1" --> "0..*" ItemOS : referenciado em
+Servico "1" --> "0..*" ItemOS : referenciado em
+Notificacao "0..*" --> "1" Cliente : enviada a
+OrdemDeServico --> StatusOS
+Agendamento --> StatusAgendamento
+Notificacao --> TipoNotificacao
+
+@enduml

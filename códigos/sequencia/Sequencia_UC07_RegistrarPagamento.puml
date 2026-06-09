@@ -1,0 +1,91 @@
+@startuml MecanicaPro_SEQ_UC07
+title Diagrama de Sequência — UC-07: Registrar Pagamento
+
+actor Recepcionista
+participant "Interface Web" as UI
+participant "ControladorPagamento" as CTRL
+participant "ServicoAutenticacao" as AUTH
+participant "ServicoPagamento" as SVC
+participant "ServicoOS" as OS_SVC
+participant "Repositorio\nde Dados" as REPO
+participant "Sistema de\nNotificacao" as NOTIF
+
+Recepcionista -> UI : acessarPagamento()
+activate UI
+UI -> CTRL : buscarOSConcluidas()
+activate CTRL
+CTRL -> AUTH : validarToken(token)
+activate AUTH
+AUTH --> CTRL : tokenValido
+deactivate AUTH
+CTRL -> OS_SVC : listarOSConcluidas()
+activate OS_SVC
+OS_SVC -> REPO : SELECT * FROM ordens_servico WHERE status = 'CONCLUIDA' ORDER BY data_fechamento DESC
+activate REPO
+REPO --> OS_SVC : listaOS
+deactivate REPO
+OS_SVC --> CTRL : ordens
+deactivate OS_SVC
+CTRL --> UI : exibirLista(ordens)
+deactivate CTRL
+UI --> Recepcionista : listaDeOS
+
+Recepcionista -> UI : selecionarOS(osId)
+UI -> CTRL : buscarFatura(osId)
+activate CTRL
+CTRL -> OS_SVC : calcularFatura(osId)
+activate OS_SVC
+OS_SVC -> REPO : SELECT os.*, SUM(io.valor_unitario * io.quantidade) as total FROM ordens_servico os JOIN itens_os io ON io.os_id = os.id WHERE os.id = ?
+activate REPO
+REPO --> OS_SVC : dadosFatura
+deactivate REPO
+OS_SVC --> CTRL : fatura(os, total)
+deactivate OS_SVC
+CTRL --> UI : exibirFatura(fatura)
+deactivate CTRL
+UI --> Recepcionista : faturaDetalhada
+
+Recepcionista -> UI : confirmarPagamento(osId, formaPagamento, valor)
+UI -> CTRL : registrarPagamento(osId, formaPagamento, valor)
+activate CTRL
+CTRL -> SVC : processarPagamento(osId, formaPagamento, valor)
+activate SVC
+SVC -> OS_SVC : obterTotalOS(osId)
+activate OS_SVC
+OS_SVC -> REPO : SELECT valor_total FROM ordens_servico WHERE id = ?
+activate REPO
+REPO --> OS_SVC : valorTotal
+deactivate REPO
+OS_SVC --> SVC : valorTotal
+deactivate OS_SVC
+
+alt [valor == valorTotal]
+    SVC -> REPO : INSERT INTO pagamentos (os_id, valor, forma_pagamento, data_pagamento, status) VALUES (?, ?, ?, NOW(), 'CONFIRMADO')
+    activate REPO
+    REPO --> SVC : pagamentoId
+    deactivate REPO
+    SVC -> OS_SVC : atualizarStatusOS(osId, "PAGA")
+    activate OS_SVC
+    OS_SVC -> REPO : UPDATE ordens_servico SET status = 'PAGA' WHERE id = ?
+    activate REPO
+    REPO --> OS_SVC : atualizado
+    deactivate REPO
+    OS_SVC --> SVC : ok
+    deactivate OS_SVC
+    SVC -> NOTIF : enviarComprovante(clienteId, pagamentoId)
+    activate NOTIF
+    NOTIF --> SVC : comprovanteEnviado
+    deactivate NOTIF
+    SVC --> CTRL : sucesso(pagamentoId)
+    CTRL --> UI : confirmacao
+    UI --> Recepcionista : exibir("Pagamento registrado. Comprovante enviado ao cliente.")
+else [valor != valorTotal]
+    SVC --> CTRL : erro("Valor informado diverge do total da OS")
+    CTRL --> UI : erro
+    UI --> Recepcionista : exibir("Erro: Valor informado não confere com o total da OS.")
+end
+deactivate SVC
+deactivate CTRL
+deactivate UI
+
+@enduml

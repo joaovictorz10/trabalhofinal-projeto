@@ -1,0 +1,67 @@
+@startuml MecanicaPro_Implantacao
+title Diagrama de Implantação — Sistema MecânicaPro
+
+node "Dispositivo do Cliente" {
+  artifact "Navegador Web\n(Chrome/Firefox)" as BROWSER
+  artifact "App Mobile\n(iOS/Android)" as APPMOBI
+}
+
+node "Servidor de Aplicacao\n(VPS Ubuntu 22.04)" {
+  artifact "Nginx Reverse Proxy\n:443 (HTTPS)" as NGINX
+  artifact "API Gateway\nNode.js/Express\n:3000" as API
+
+  node "Containers Docker" {
+    artifact "Servico Usuarios\n:3001" as SU
+    artifact "Servico OS\n:3002" as SOS
+    artifact "Servico Estoque\n:3003" as SE
+    artifact "Servico Pagamentos\n:3004" as SP
+    artifact "Servico Notificacoes\n:3005" as SN
+    artifact "Servico Relatorios\n:3006" as SR
+  }
+}
+
+node "Servidor de Banco de Dados\n(VPS Ubuntu 22.04)" {
+  database "PostgreSQL 16\nPrimary :5432" as PGPRIMARY
+  database "PostgreSQL 16\nRead Replica :5433" as PGREPLICA
+}
+
+node "Servico de Mensageria\n(RabbitMQ Cloud)" {
+  artifact "Fila de Eventos\n:5672" as MQ
+}
+
+node "Armazenamento em Nuvem\n(Amazon S3)" {
+  artifact "Bucket: mecanicapro-files" as S3
+}
+
+node "Servicos Externos" {
+  artifact "SMTP Gmail\n(Nodemailer)" as SMTP
+  artifact "Twilio API\n(SMS/WhatsApp)" as TWILIO
+}
+
+BROWSER --> NGINX : HTTPS
+APPMOBI --> NGINX : HTTPS
+NGINX --> API : HTTP interno
+API --> SU
+API --> SOS
+API --> SE
+API --> SP
+API --> SN
+API --> SR
+
+SU --> PGPRIMARY
+SOS --> PGPRIMARY
+SE --> PGPRIMARY
+SP --> PGPRIMARY
+SR --> PGREPLICA
+PGPRIMARY --> PGREPLICA : streaming replication
+
+SOS --> MQ
+SP --> MQ
+MQ --> SN
+
+SN --> SMTP
+SN --> TWILIO
+SR --> S3
+SOS --> S3
+
+@enduml

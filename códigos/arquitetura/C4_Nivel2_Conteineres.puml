@@ -1,0 +1,68 @@
+@startuml MecanicaPro_C4_Conteineres
+title C4 Model — Nível 2: Contêineres do Sistema MecânicaPro
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(recepcionista, "Recepcionista", "")
+Person(mecanico, "Mecânico", "")
+Person(admin, "Gerente/Admin", "")
+
+System_Boundary(mecanicapro, "MecânicaPro") {
+
+    Container(webapp, "Web App", "React.js", "Interface web para\nrecepcionistas e administradores.")
+    Container(mobile, "App Mobile", "React Native", "Interface mobile\npara mecânicos.")
+    Container(nginx, "Nginx", "Reverse Proxy", "Termina SSL e\nroteia o tráfego.")
+    Container(gateway, "API Gateway", "Node.js / Express", "Autenticação JWT,\nrate limiting e roteamento.")
+
+    Container(svc_usuarios, "Serviço de Usuários", "Node.js", "Autenticação e\ngerenciamento de perfis.")
+    Container(svc_clientes, "Serviço de Clientes/Veículos", "Node.js", "Cadastro e consulta\nde clientes e veículos.")
+    Container(svc_os, "Serviço de OS", "Node.js", "Ciclo de vida completo\ndas Ordens de Serviço.")
+    Container(svc_estoque, "Serviço de Estoque", "Node.js", "Controle de produtos\ne alertas de estoque.")
+    Container(svc_pagamentos, "Serviço de Pagamentos", "Node.js", "Processamento e registro\nde pagamentos.")
+    Container(svc_notif, "Serviço de Notificações", "Node.js", "Consumo de filas e\ndisparo de e-mail/SMS.")
+    Container(svc_rel, "Serviço de Relatórios", "Node.js", "Geração e exportação\nde relatórios gerenciais.")
+
+    ContainerDb(db_primary, "PostgreSQL Primary", "PostgreSQL 16", "Banco de dados principal\npara operações de escrita.")
+    ContainerDb(db_replica, "PostgreSQL Read Replica", "PostgreSQL 16", "Réplica de leitura para\nconsultas e relatórios.")
+    Container(rabbitmq, "RabbitMQ", "Message Broker", "Fila de eventos\nassíncronos.")
+}
+
+System_Ext(smtp, "SMTP Gmail", "E-mail transacional")
+System_Ext(twilio, "Twilio", "SMS / WhatsApp")
+System_Ext(s3, "Amazon S3", "Armazenamento de arquivos")
+
+Rel(recepcionista, webapp, "Usa", "HTTPS")
+Rel(mecanico, mobile, "Usa", "HTTPS")
+Rel(admin, webapp, "Usa", "HTTPS")
+
+Rel(webapp, nginx, "Requisições", "HTTPS")
+Rel(mobile, nginx, "Requisições", "HTTPS")
+Rel(nginx, gateway, "Roteia", "HTTP")
+
+Rel(gateway, svc_usuarios, "")
+Rel(gateway, svc_clientes, "")
+Rel(gateway, svc_os, "")
+Rel(gateway, svc_estoque, "")
+Rel(gateway, svc_pagamentos, "")
+Rel(gateway, svc_rel, "")
+
+Rel(svc_usuarios, db_primary, "Lê/Escreve", "SQL")
+Rel(svc_clientes, db_primary, "Lê/Escreve", "SQL")
+Rel(svc_os, db_primary, "Lê/Escreve", "SQL")
+Rel(svc_estoque, db_primary, "Lê/Escreve", "SQL")
+Rel(svc_pagamentos, db_primary, "Lê/Escreve", "SQL")
+Rel(svc_rel, db_replica, "Lê", "SQL")
+
+Rel(svc_os, rabbitmq, "Publica eventos", "AMQP")
+Rel(svc_pagamentos, rabbitmq, "Publica eventos", "AMQP")
+Rel(rabbitmq, svc_notif, "Consome fila", "AMQP")
+
+Rel(svc_notif, smtp, "Envia e-mail", "SMTP")
+Rel(svc_notif, twilio, "Envia SMS", "REST")
+Rel(svc_rel, s3, "Armazena relatórios", "AWS SDK")
+
+Rel(db_primary, db_replica, "Replicação", "Streaming")
+
+@enduml

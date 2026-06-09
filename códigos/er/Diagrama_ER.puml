@@ -1,0 +1,167 @@
+@startuml MecanicaPro_ER
+title Diagrama Entidade-Relacionamento — MecânicaPro
+
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <u>x</u>
+!define FK(x) <i>x</i>
+
+hide methods
+hide stereotypes
+
+skinparam classAttributeIconSize 0
+
+TABLE(usuarios, "usuarios") {
+  PK(id): BIGSERIAL
+  nome: VARCHAR(150)
+  email: VARCHAR(150) UNIQUE
+  senha_hash: VARCHAR(255)
+  telefone: VARCHAR(20)
+  papel: VARCHAR(20)
+  status: VARCHAR(20)
+  data_cadastro: TIMESTAMP
+  ultimo_login: TIMESTAMP
+}
+
+TABLE(recepcionistas, "recepcionistas") {
+  PK(FK(usuario_id)): BIGINT
+  turno: VARCHAR(20)
+}
+
+TABLE(mecanicos, "mecanicos") {
+  PK(FK(usuario_id)): BIGINT
+  especialidade: VARCHAR(100)
+  crea_numero: VARCHAR(30)
+}
+
+TABLE(administradores, "administradores") {
+  PK(FK(usuario_id)): BIGINT
+  nivel_acesso: VARCHAR(30)
+  permissoes: TEXT
+}
+
+TABLE(clientes, "clientes") {
+  PK(id): BIGSERIAL
+  nome: VARCHAR(150)
+  cpf: VARCHAR(14) UNIQUE
+  email: VARCHAR(150)
+  telefone: VARCHAR(20)
+  endereco: TEXT
+  data_cadastro: TIMESTAMP
+  status: VARCHAR(20)
+}
+
+TABLE(veiculos, "veiculos") {
+  PK(id): BIGSERIAL
+  FK(cliente_id): BIGINT
+  placa: VARCHAR(10) UNIQUE
+  marca: VARCHAR(60)
+  modelo: VARCHAR(80)
+  ano: INTEGER
+  cor: VARCHAR(30)
+  quilometragem: INTEGER
+}
+
+TABLE(ordens_servico, "ordens_servico") {
+  PK(id): BIGSERIAL
+  FK(cliente_id): BIGINT
+  FK(veiculo_id): BIGINT
+  FK(mecanico_id): BIGINT
+  data_abertura: TIMESTAMP
+  data_fechamento: TIMESTAMP
+  data_inicio: TIMESTAMP
+  status: VARCHAR(30)
+  observacoes: TEXT
+  valor_estimado: NUMERIC(10,2)
+  valor_total: NUMERIC(10,2)
+}
+
+TABLE(itens_os, "itens_os") {
+  PK(id): BIGSERIAL
+  FK(os_id): BIGINT
+  FK(produto_id): BIGINT NULL
+  FK(servico_id): BIGINT NULL
+  tipo: VARCHAR(20)
+  descricao: VARCHAR(255)
+  quantidade: INTEGER
+  valor_unitario: NUMERIC(10,2)
+}
+
+TABLE(servicos, "servicos") {
+  PK(id): BIGSERIAL
+  nome: VARCHAR(120)
+  descricao: TEXT
+  categoria: VARCHAR(60)
+  duracao_estimada_min: INTEGER
+  valor_base: NUMERIC(10,2)
+  ativo: BOOLEAN
+}
+
+TABLE(produtos, "produtos") {
+  PK(id): BIGSERIAL
+  nome: VARCHAR(120)
+  descricao: TEXT
+  codigo_barras: VARCHAR(30) UNIQUE
+  categoria: VARCHAR(60)
+  quantidade_estoque: INTEGER
+  estoque_minimo: INTEGER
+  valor_custo: NUMERIC(10,2)
+  valor_venda: NUMERIC(10,2)
+  status: VARCHAR(20)
+}
+
+TABLE(agendamentos, "agendamentos") {
+  PK(id): BIGSERIAL
+  FK(cliente_id): BIGINT
+  FK(veiculo_id): BIGINT
+  FK(servico_id): BIGINT
+  FK(os_id): BIGINT NULL
+  data_hora: TIMESTAMP
+  status: VARCHAR(30)
+  observacoes: TEXT
+  data_solicitacao: TIMESTAMP
+  cancelado_por: VARCHAR(50)
+}
+
+TABLE(pagamentos, "pagamentos") {
+  PK(id): BIGSERIAL
+  FK(os_id): BIGINT
+  valor: NUMERIC(10,2)
+  forma_pagamento: VARCHAR(30)
+  data_pagamento: TIMESTAMP
+  status: VARCHAR(20)
+  comprovante_url: VARCHAR(255)
+}
+
+TABLE(notificacoes, "notificacoes") {
+  PK(id): BIGSERIAL
+  FK(cliente_id): BIGINT
+  titulo: VARCHAR(120)
+  mensagem: TEXT
+  tipo: VARCHAR(40)
+  data_envio: TIMESTAMP
+  lida: BOOLEAN
+  data_leitura: TIMESTAMP
+}
+
+usuarios "1" -- "0..1" recepcionistas : heranca
+usuarios "1" -- "0..1" mecanicos : heranca
+usuarios "1" -- "0..1" administradores : heranca
+
+clientes "1" -- "0..*" veiculos
+clientes "1" -- "0..*" ordens_servico
+clientes "1" -- "0..*" agendamentos
+clientes "1" -- "0..*" notificacoes
+
+veiculos "1" -- "0..*" ordens_servico
+veiculos "1" -- "0..*" agendamentos
+
+ordens_servico "1" -- "1..*" itens_os
+ordens_servico "1" -- "0..1" pagamentos
+ordens_servico "0..1" -- "0..1" agendamentos
+
+itens_os "0..*" -- "0..1" produtos
+itens_os "0..*" -- "0..1" servicos
+
+mecanicos "1" -- "0..*" ordens_servico
+
+@enduml

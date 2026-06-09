@@ -1,0 +1,39 @@
+@startuml MecanicaPro_COM_UC05
+title Diagrama de Comunicação — UC-05: Abrir Ordem de Serviço
+
+skinparam sequenceMessageAlign center
+
+participant "Recepcionista" as REC << (A,#FF7700) Ator >>
+participant ":InterfaceWeb" as UI << (C,#ADD8E6) >>
+participant ":ControladorOS" as CTRL << (C,#ADD8E6) >>
+participant ":ServicoAutenticacao" as AUTH << (C,#ADD8E6) >>
+participant ":ServicoOS" as SVC << (C,#ADD8E6) >>
+participant ":Repositorio" as REPO << (C,#ADD8E6) >>
+participant ":SistemaNotificacao" as NOTIF << (C,#ADD8E6) >>
+
+REC -> UI : 1: preencher e enviar dados da OS
+UI -> CTRL : 2: abrirOS(clienteId, veiculoId, servicos)
+CTRL -> AUTH : 3: validarToken(token)
+AUTH --> CTRL : 3.1: tokenOk
+CTRL -> SVC : 4: criarOS(dados)
+SVC -> REPO : 5: salvar(os)
+REPO --> SVC : 5.1: osId gerado
+SVC -> NOTIF : 6: notificarCliente(clienteId, osId)
+NOTIF --> SVC : 6.1: notificacaoEnviada
+SVC --> CTRL : 7: sucesso(osId)
+CTRL --> UI : 8: confirmacao()
+UI --> REC : 9: exibir("OS aberta com sucesso")
+
+note right of CTRL
+  Fluxo resumido:
+  1. Recepcionista preenche dados da OS
+  2. Interface envia ao controlador
+  3. Controlador valida autenticação
+  4. Controlador delega criação ao ServicoOS
+  5. ServicoOS persiste no repositório
+  6. ServicoOS notifica o cliente
+  7. Controlador confirma à interface
+  8. Interface exibe mensagem de sucesso
+end note
+
+@enduml

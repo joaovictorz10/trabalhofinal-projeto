@@ -1,0 +1,74 @@
+@startuml MecanicaPro_Componentes
+title Diagrama de Componentes — Sistema MecânicaPro
+
+skinparam componentStyle rectangle
+
+package "Camada de Apresentacao" {
+  [Web App\nReact.js] as WEB
+  [App Mobile\nReact Native] as MOBILE
+}
+
+package "Camada de API Gateway" {
+  [Nginx Reverse Proxy] as NGINX
+  [API Gateway\n(Express.js)] as GATEWAY
+}
+
+package "Microsservicos (Node.js)" {
+  [Servico de\nUsuarios] as SVC_USER
+  [Servico de\nClientes/Veiculos] as SVC_CLIENT
+  [Servico de\nOrdens de Servico] as SVC_OS
+  [Servico de\nEstoque] as SVC_EST
+  [Servico de\nPagamentos] as SVC_PAG
+  [Servico de\nNotificacoes] as SVC_NOTIF
+  [Servico de\nRelatorios] as SVC_REL
+}
+
+package "Mensageria" {
+  [Fila de Notificacoes\n(RabbitMQ)] as QUEUE
+}
+
+package "Banco de Dados" {
+  database "PostgreSQL\n(Principal)" as DB_PRIMARY
+  database "PostgreSQL\n(Read Replica)" as DB_REPLICA
+}
+
+package "Armazenamento" {
+  [Amazon S3\n(Documentos/Imagens)] as S3
+}
+
+package "Notificacoes Externas" {
+  [Email\n(Nodemailer/SMTP)] as EMAIL
+  [SMS/WhatsApp\n(Twilio)] as SMS
+}
+
+WEB --> NGINX
+MOBILE --> NGINX
+NGINX --> GATEWAY
+
+GATEWAY --> SVC_USER
+GATEWAY --> SVC_CLIENT
+GATEWAY --> SVC_OS
+GATEWAY --> SVC_EST
+GATEWAY --> SVC_PAG
+GATEWAY --> SVC_NOTIF
+GATEWAY --> SVC_REL
+
+SVC_USER --> DB_PRIMARY
+SVC_CLIENT --> DB_PRIMARY
+SVC_OS --> DB_PRIMARY
+SVC_EST --> DB_PRIMARY
+SVC_PAG --> DB_PRIMARY
+SVC_REL --> DB_REPLICA
+
+SVC_OS --> QUEUE
+SVC_PAG --> QUEUE
+QUEUE --> SVC_NOTIF
+
+SVC_NOTIF --> EMAIL
+SVC_NOTIF --> SMS
+SVC_REL --> S3
+SVC_CLIENT --> S3
+
+DB_PRIMARY --> DB_REPLICA : replicacao
+
+@enduml

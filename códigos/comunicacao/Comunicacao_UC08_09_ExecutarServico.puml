@@ -1,0 +1,43 @@
+@startuml MecanicaPro_COM_UC08
+title Diagrama de Comunicação — UC-08/UC-09: Executar Serviço
+
+skinparam sequenceMessageAlign center
+
+participant "Mecanico" as MEC << (A,#FF7700) Ator >>
+participant ":InterfaceWeb" as UI << (C,#ADD8E6) >>
+participant ":ControladorOS" as CTRL << (C,#ADD8E6) >>
+participant ":ServicoOS" as SVC << (C,#ADD8E6) >>
+participant ":ServicoEstoque" as EST << (C,#ADD8E6) >>
+participant ":Repositorio" as REPO << (C,#ADD8E6) >>
+participant ":SistemaNotificacao" as NOTIF << (C,#ADD8E6) >>
+
+MEC -> UI : 1: selecionarOS(osId)
+UI -> CTRL : 2: executarServico(osId)
+CTRL -> SVC : 3: iniciarExecucao(osId, mecanicoId)
+SVC -> REPO : 4: atualizarStatus(osId, 'EM_EXECUCAO')
+REPO --> SVC : 4.1: atualizado
+SVC -> EST : 5: baixarEstoque(produtoId, quantidade)
+EST -> REPO : 5.1: updateEstoque()
+REPO --> EST : 5.2: ok
+EST --> SVC : 5.3: estoqueAtualizado
+SVC -> REPO : 6: salvarResultado(osId, itens)
+REPO --> SVC : 6.1: salvo
+SVC -> NOTIF : 7: notificarConclusao(clienteId, osId)
+NOTIF --> SVC : 7.1: notificacaoEnviada
+SVC --> CTRL : 8: servicoConcluido(valorTotal)
+CTRL --> UI : 9: exibirResultado()
+UI --> MEC : 10: exibir("Servico concluido")
+
+note right of CTRL
+  Fluxo resumido:
+  1. Mecanico seleciona OS
+  2. Interface envia ao controlador
+  3. Controlador inicia execucao via ServicoOS
+  4. Status e atualizado no banco
+  5. Estoque e baixado conforme pecas usadas
+  6. Resultado e salvo
+  7. Cliente e notificado
+  8. Controlador retorna confirmacao
+end note
+
+@enduml

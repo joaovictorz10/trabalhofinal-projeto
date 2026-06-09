@@ -1,0 +1,89 @@
+@startuml MecanicaPro_SEQ_UC05
+title Diagrama de Sequência — UC-05: Abrir Ordem de Serviço
+
+actor Recepcionista
+participant "Interface Web" as UI
+participant "ControladorOS" as CTRL
+participant "ServicoAutenticacao" as AUTH
+participant "ServicoPermissoes" as PERM
+participant "ServicoOS" as SVC
+participant "Repositorio\nde Dados" as REPO
+participant "Sistema de\nNotificacao" as NOTIF
+
+Recepcionista -> UI : acessarAberturOS()
+activate UI
+UI -> CTRL : iniciarAbertura(token)
+activate CTRL
+CTRL -> AUTH : validarToken(token)
+activate AUTH
+AUTH --> CTRL : tokenValido
+deactivate AUTH
+CTRL -> PERM : validarPermissao(token, "RECEPCIONISTA", "CRIAR_OS")
+activate PERM
+PERM --> CTRL : permissaoOk
+deactivate PERM
+CTRL -> SVC : buscarClientesAtivos()
+activate SVC
+SVC -> REPO : SELECT * FROM clientes WHERE status = 'ATIVO'
+activate REPO
+REPO --> SVC : listaClientes
+deactivate REPO
+SVC --> CTRL : clientes
+deactivate SVC
+CTRL --> UI : exibirFormulario(clientes)
+deactivate CTRL
+
+Recepcionista -> UI : preencherOS(clienteId, veiculoId, servicos, observacoes)
+UI -> CTRL : abrirOS(clienteId, veiculoId, servicos, observacoes)
+activate CTRL
+CTRL -> AUTH : validarToken(token)
+activate AUTH
+AUTH --> CTRL : tokenValido
+deactivate AUTH
+CTRL -> PERM : validarPermissao(token, "RECEPCIONISTA", "CRIAR_OS")
+activate PERM
+PERM --> CTRL : permissaoOk
+deactivate PERM
+CTRL -> SVC : criarOS(clienteId, veiculoId, servicos, observacoes)
+activate SVC
+
+SVC -> REPO : buscarCliente(clienteId)
+activate REPO
+REPO --> SVC : dadosCliente
+deactivate REPO
+SVC -> REPO : buscarVeiculo(veiculoId)
+activate REPO
+REPO --> SVC : dadosVeiculo
+deactivate REPO
+SVC -> REPO : calcularValorServicos(servicos)
+activate REPO
+REPO --> SVC : valorEstimado
+deactivate REPO
+
+SVC -> REPO : INSERT INTO ordens_servico (cliente_id, veiculo_id, status, data_abertura, valor_estimado) VALUES (?, ?, 'ABERTA', NOW(), ?)
+activate REPO
+REPO --> SVC : osId
+deactivate REPO
+
+loop [Para cada serviço selecionado]
+    SVC -> REPO : INSERT INTO itens_os (os_id, servico_id, valor) VALUES (?, ?, ?)
+    activate REPO
+    REPO --> SVC : itemId
+    deactivate REPO
+end
+
+alt [cliente possui email cadastrado]
+    SVC -> NOTIF : notificarAberturaOS(clienteId, osId)
+    activate NOTIF
+    NOTIF --> SVC : notificacaoEnviada
+    deactivate NOTIF
+end
+
+SVC --> CTRL : resultadoOS(osId, valorEstimado)
+deactivate SVC
+CTRL --> UI : confirmacao(osId)
+deactivate CTRL
+UI --> Recepcionista : exibir("OS #" + osId + " aberta. Valor estimado: R$ " + valorEstimado)
+deactivate UI
+
+@enduml

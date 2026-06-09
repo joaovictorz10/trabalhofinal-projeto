@@ -1,0 +1,55 @@
+@startuml MecanicaPro_UseCases
+title Sistema MecânicaPro — Diagrama de Casos de Uso
+
+left to right direction
+skinparam actorStyle awesome
+
+actor Usuario
+actor Recepcionista
+actor Mecanico
+actor "Gerente/Admin" as Admin
+actor "Sistema Notificacao" as SistNotif
+
+Usuario <|-- Recepcionista
+Usuario <|-- Mecanico
+Usuario <|-- Admin
+
+rectangle MecânicaPro {
+  usecase (UC-01 Autenticar) as UC01
+  usecase (UC-02 Gerenciar Perfil) as UC02
+  usecase (UC-03 Cadastrar Cliente) as UC03
+  usecase (UC-04 Cadastrar Veiculo) as UC04
+  usecase (UC-05 Abrir Ordem de Servico) as UC05
+  usecase (UC-06 Realizar Agendamento) as UC06
+  usecase (UC-07 Registrar Pagamento) as UC07
+  usecase (UC-08 Executar Servico) as UC08
+  usecase (UC-09 Atualizar Status OS) as UC09
+  usecase (UC-10 Consultar Estoque) as UC10
+  usecase (UC-11 Gerenciar Produtos) as UC11
+  usecase (UC-12 Gerenciar Servicos) as UC12
+  usecase (UC-13 Gerenciar Usuarios) as UC13
+  usecase (UC-14 Gerar Relatorios) as UC14
+  usecase (UC-15 Notificar Cliente) as UC15
+  usecase (UC-16 Validar Permissoes) as UC16
+}
+
+Recepcionista --> UC03
+Recepcionista --> UC04
+Recepcionista --> UC05
+Recepcionista --> UC06
+Recepcionista --> UC07
+Mecanico --> UC08
+Mecanico --> UC09
+Mecanico --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+SistNotif --> UC15
+
+UC05 .> UC15 : "<<extend>>"
+UC08 .> UC15 : "<<extend>>"
+UC03 ..> UC01 : "<<include>>"
+UC05 ..> UC16 : "<<include>>"
+UC14 ..> UC16 : "<<include>>"
+@enduml

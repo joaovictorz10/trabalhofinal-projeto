@@ -1,0 +1,125 @@
+@startuml MecanicaPro_SEQ_UC08_09
+title Diagrama de Sequência — UC-08/UC-09: Executar Serviço e Atualizar Status OS
+
+actor Mecanico
+participant "Interface Web" as UI
+participant "ControladorOS" as CTRL
+participant "ServicoAutenticacao" as AUTH
+participant "ServicoPermissoes" as PERM
+participant "ServicoOS" as SVC
+participant "ServicoEstoque" as EST
+participant "Repositorio\nde Dados" as REPO
+participant "Sistema de\nNotificacao" as NOTIF
+
+Mecanico -> UI : acessarMinhasOS()
+activate UI
+UI -> CTRL : listarOS(mecanicoId)
+activate CTRL
+CTRL -> AUTH : validarToken(token)
+activate AUTH
+AUTH --> CTRL : tokenValido
+deactivate AUTH
+CTRL -> PERM : validarPermissao(token, "MECANICO", "VISUALIZAR_OS")
+activate PERM
+PERM --> CTRL : permissaoOk
+deactivate PERM
+CTRL -> SVC : buscarOSPorMecanico(mecanicoId)
+activate SVC
+SVC -> REPO : SELECT * FROM ordens_servico WHERE mecanico_id = ? AND status IN ('ABERTA','EM_EXECUCAO') ORDER BY data_abertura DESC
+activate REPO
+REPO --> SVC : listaOS
+deactivate REPO
+SVC --> CTRL : ordens
+deactivate SVC
+CTRL --> UI : exibirListaOS(ordens)
+deactivate CTRL
+UI --> Mecanico : listaDeOS
+
+Mecanico -> UI : selecionarOS(osId)
+UI -> CTRL : buscarDetalhesOS(osId)
+activate CTRL
+CTRL -> SVC : getDetalhesCompletos(osId)
+activate SVC
+SVC -> REPO : SELECT os.*, c.nome, v.placa, v.modelo FROM ordens_servico os JOIN clientes c ON os.cliente_id = c.id JOIN veiculos v ON os.veiculo_id = v.id WHERE os.id = ?
+activate REPO
+REPO --> SVC : dadosCompletos
+deactivate REPO
+SVC -> REPO : SELECT * FROM itens_os WHERE os_id = ?
+activate REPO
+REPO --> SVC : itens
+deactivate REPO
+SVC --> CTRL : detalhesOS(os, itens)
+deactivate SVC
+CTRL --> UI : exibirDetalhes(os, itens)
+deactivate CTRL
+UI --> Mecanico : detalhesOS
+
+Mecanico -> UI : iniciarExecucao(osId)
+UI -> CTRL : atualizarStatusOS(osId, "EM_EXECUCAO")
+activate CTRL
+CTRL -> SVC : atualizarStatus(osId, "EM_EXECUCAO", mecanicoId)
+activate SVC
+SVC -> REPO : UPDATE ordens_servico SET status = 'EM_EXECUCAO', mecanico_id = ?, data_inicio = NOW() WHERE id = ?
+activate REPO
+REPO --> SVC : atualizado
+deactivate REPO
+SVC --> CTRL : ok
+deactivate SVC
+CTRL --> UI : statusAtualizado
+deactivate CTRL
+
+loop [Para cada peça utilizada]
+    Mecanico -> UI : registrarPecaUsada(osId, produtoId, quantidade)
+    UI -> CTRL : baixarEstoque(osId, produtoId, quantidade)
+    activate CTRL
+    CTRL -> EST : verificarDisponibilidade(produtoId, quantidade)
+    activate EST
+    EST -> REPO : SELECT quantidade_estoque FROM produtos WHERE id = ?
+    activate REPO
+    REPO --> EST : estoqueAtual
+    deactivate REPO
+
+    alt [estoqueAtual >= quantidade]
+        EST -> REPO : UPDATE produtos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ?
+        activate REPO
+        REPO --> EST : atualizado
+        deactivate REPO
+        EST -> REPO : INSERT INTO itens_os (os_id, produto_id, quantidade, valor_unitario) VALUES (?, ?, ?, ?)
+        activate REPO
+        REPO --> EST : itemRegistrado
+        deactivate REPO
+        EST --> CTRL : ok
+    else [estoqueAtual < quantidade]
+        EST --> CTRL : erro("Estoque insuficiente")
+        CTRL --> UI : alertaEstoque
+        UI --> Mecanico : exibir("Estoque insuficiente para o produto selecionado")
+    end
+    deactivate EST
+    deactivate CTRL
+end
+
+Mecanico -> UI : finalizarServico(osId, observacoesFinais)
+UI -> CTRL : concluirOS(osId, observacoesFinais)
+activate CTRL
+CTRL -> SVC : finalizarOS(osId, observacoesFinais)
+activate SVC
+SVC -> REPO : SELECT SUM(valor_unitario * quantidade) FROM itens_os WHERE os_id = ?
+activate REPO
+REPO --> SVC : totalCalculado
+deactivate REPO
+SVC -> REPO : UPDATE ordens_servico SET status = 'CONCLUIDA', observacoes = ?, valor_total = ?, data_fechamento = NOW() WHERE id = ?
+activate REPO
+REPO --> SVC : atualizado
+deactivate REPO
+SVC -> NOTIF : notificarConclusao(clienteId, osId, valorTotal)
+activate NOTIF
+NOTIF --> SVC : notificacaoEnviada
+deactivate NOTIF
+SVC --> CTRL : resultado(valorTotal)
+deactivate SVC
+CTRL --> UI : confirmacao
+deactivate CTRL
+UI --> Mecanico : exibir("OS finalizada. Valor total: R$ " + valorTotal + ". Cliente notificado.")
+deactivate UI
+
+@enduml
